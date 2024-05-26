@@ -1,0 +1,120 @@
+<?php
+    header('Content-Type: text/plain');
+
+    $Model = $_REQUEST['model'];
+    $Text = $_REQUEST['text'];
+
+    if ($Model == '1') {
+		$model_class = 'gpt-3.5-turbo';
+		$model_req = 'gpt-3.5-turbo';	
+	}
+	else if ($Model == '2') {
+		$model_class = 'ft:gpt-3.5-turbo-0125:dasap:dasap2:9MdBiRvb';
+		$model_req = 'ft:gpt-3.5-turbo-0125:dasap:dasap-rqrmts-1:9PEkcVQT';
+	}
+	else if ($Model == '3') {
+		$model_class = 'gpt-4';
+		$model_req = 'gpt-4';
+	}
+	else if ($Model == '4' || $Model == '5') {
+        $ResultArray["Class"] = "Not yet implemented.";
+        $ResultArray["Req"] = "Not yet implemented.";
+		echo json_encode($ResultArray);
+        return;
+    }
+	
+	// Set your OpenAI API key
+	$apiKey = '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';
+
+	// API endpoint
+	$endpoint = 'https://api.openai.com/v1/chat/completions';
+
+	$prompt = "
+			Verilen cümleleri doğal afet türlerine göre aşağıdaki adımları uygulayarak sınıflandır ve sadece sonuçlarını yazdır.
+			-Cümle deprem doğal afetiyle ilgiliyse veya 'yardım', 'konum', 'kimlik', 'iletişim' gibi aciliyet içeren bilgiler içeriyorsa 'Deprem' yaz.
+			-Cümle sel doğal afetiyle ilgiliyse 'Sel' yaz.
+			-Cümle yangın doğal afetiyle ilgiliyse 'Yangın' yaz.
+			-Gerçekten doğal afetle ilgili olmayan veya mecazi anlamda doğal afetlerle ilişkilendirilebilecek cümleleri 'Alakasız' olarak sınıflandır.
+		";
+		
+
+	$prompt_text = $prompt . "\n" . $Text;
+
+	// Data to be sent in the request
+	$data = [
+		'model' => $model_class,
+		'messages' => [['role' => 'user', 'content' => $prompt_text]],
+		'temperature' => 0,
+	];
+
+	// Initialize curl
+	$ch = curl_init();
+
+	// Set curl options
+	curl_setopt($ch, CURLOPT_URL, $endpoint);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($ch, CURLOPT_POST, true);
+	curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+	curl_setopt($ch, CURLOPT_HTTPHEADER, [
+		'Content-Type: application/json',
+		'Authorization: Bearer ' . $apiKey
+	]);
+
+	// Execute curl request
+	$response = curl_exec($ch);
+
+	// Check for errors
+	if ($response === false) {
+		$ResultArray["Class"] = curl_error($ch);
+	} else {
+		$ResultArray["Class"] = $response;
+	}
+
+	// Close curl
+	curl_close($ch);
+
+	$prompt = "
+			Verilen cümleleri ihtiyaç türlerine göre aşağıdaki adımları uygulayarak sınıflandır ve sadece sonuçlarını yazdır.
+                        -Cümle herhangi bir arama kurtarma destek ve yardım talebi içeriyorsa 'arama-kurtarma' yaz.
+                        -Cümle herhangi bir malzeme veya gıda yardım talebi içeriyorsa 'malzeme-yiyecek' yaz.
+                        -Cümle sadece haber içeriğindeyse 'haber' yaz.
+		";
+		
+
+	$prompt_text = $prompt . "\n" . $Text;
+
+	// Data to be sent in the request
+	$data = [
+		'model' => $model_req,
+		'messages' => [['role' => 'user', 'content' => $prompt_text]],
+		'temperature' => 0,
+	];
+
+	// Initialize curl
+	$ch = curl_init();
+
+	// Set curl options
+	curl_setopt($ch, CURLOPT_URL, $endpoint);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($ch, CURLOPT_POST, true);
+	curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+	curl_setopt($ch, CURLOPT_HTTPHEADER, [
+		'Content-Type: application/json',
+		'Authorization: Bearer ' . $apiKey
+	]);
+
+	// Execute curl request
+	$response = curl_exec($ch);
+
+	// Check for errors
+	if ($response === false) {
+		$ResultArray["Req"] = curl_error($ch);
+	} else {
+		$ResultArray["Req"] = $response;
+	}
+
+	// Close curl
+	curl_close($ch);
+	
+	echo json_encode($ResultArray);
+?>
