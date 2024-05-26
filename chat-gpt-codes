@@ -6,7 +6,7 @@ from collections import defaultdict
 import openai
 
 # Authenticate
-openai.api_key =("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")
+openai.api_key =("api_key")
 
 
 class Settings(dict):
