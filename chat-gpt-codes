@@ -1,0 +1,112 @@
+import argparse
+import tomllib
+from pathlib import Path
+from collections import defaultdict
+
+import openai
+
+# Authenticate
+openai.api_key =("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")
+
+
+class Settings(dict):
+    """Handle loading and accessing application settings from file."""
+
+    @classmethod
+    def load(cls, path) -> "Settings":
+        """Load TOML settings file and pass it to class constuctor."""
+        with path.open("rb") as file:
+            return cls(tomllib.load(file))
+
+    def __init__(self, *args, **kwargs) -> None:
+        """Add general settings and prompts as instance attributes."""
+        super().__init__(*args, **kwargs)
+        # Settings
+        self.chat_models = self["general"]["chat_models"]
+        self.model = self["general"]["model"]
+        self.max_tokens = self["general"]["max_tokens"]
+        self.temperature = self["general"]["temperature"]
+        self.model_supports_chat_completions = self.model in self.chat_models
+        # Prompts
+        self.instruction_prompt = self["prompts"]["instruction_prompt"]
+        self.role_prompt = self["prompts"]["role_prompt"]
+        
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line input."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file_path", type=Path, help="Path to the input file")
+    return parser.parse_args()
+
+
+
+def main(args: argparse.Namespace):
+    # giriş dosyası
+    file_content = args.file_path.read_text("utf-8")
+    settings = Settings.load(Path("settings.toml"))
+
+    # tweetleri satırlara ayırma
+    tweets = file_content.split("\n")
+
+    class_tweet_counts = defaultdict(int)
+
+
+    
+    for tweet in tweets:
+        if settings.model_supports_chat_completions:
+            completed_tweet = get_chat_completion(tweet, settings)
+        else:
+            completed_tweet = get_completion(tweet, settings)
+
+
+        for sinif in ["Deprem", "Sel", "Yangın", "Alakasız"]:
+                if sinif in completed_tweet:
+                    class_tweet_counts[sinif] += 1
+                    break    
+
+       
+        print(completed_tweet)
+
+    print("\nSınıf sayıları:")
+    for sinif, sayi in class_tweet_counts.items():
+        print(f"{sinif}: {sayi}")    
+
+        
+
+def get_completion(content: str, settings: Settings) -> str:
+    """Send a request to the /completions endpoint."""
+    response = openai.Completion.create(
+        model=settings.model,
+        prompt=assemble_prompt(content, settings),
+        max_tokens=settings.max_tokens,
+        temperature=settings.temperature,
+    )
+    return response["choices"][0]["text"]
+
+
+def get_chat_completion(content: str, settings: Settings) -> str:
+    """Send a request to the /chat/completions endpoint."""
+    response = openai.ChatCompletion.create(
+        model=settings.model,
+        messages=assemble_chat_messages(content, settings),
+        temperature=settings.temperature,
+    )
+    return response["choices"][0]["message"]["content"]
+
+
+def assemble_prompt(content: str, settings: Settings) -> str:
+    """Combine all text input into a single prompt."""
+    return f">>>>>\n{content}\n<<<<<\n\n" + settings.instruction_prompt
+
+
+def assemble_chat_messages(content: str, settings: Settings) -> list[dict]:
+    """Combine all messages into a well-formatted dictionary."""
+    return [
+        {"role": "system", "content": settings.role_prompt},
+        {"role": "user", "content": f">>>>>\n{content}\n<<<<<"},
+        {"role": "user", "content": settings.instruction_prompt},
+    ]
+
+if __name__ == "__main__":
+    main(parse_args())
