@@ -1,1 +1,49 @@
+import pandas as pd
 
+file_name = input("Enter the name (or path) of the Excel file: ")
+
+# Read the Excel file
+try:
+    df = pd.read_excel(file_name)
+except FileNotFoundError:
+    print("The specified file could not be found.")
+    exit()
+
+filter = df['sınıf'].isin(['deprem', 'yangın', 'sel', 'alakasız'])
+filtered_df = df[filter]
+
+used_tweets = []
+
+# Ask the user how many data sets they want to create
+try:
+    num_datasets = int(input("How many data sets do you want to create? Enter a number: "))
+except ValueError:
+    print("Invalid input. Please enter a valid number.")
+    exit()
+
+# Create the specified number of data sets
+for i in range(num_datasets):
+    dataset_tweets = []
+    for class_name in ['deprem', 'yangın', 'sel', 'alakasız']:
+        # Filter rows based on the class
+        class_filter = filtered_df['sınıf'] == class_name
+        class_df = filtered_df[class_filter]
+
+        # If there are rows for the class and the tweet message has not been used before, add it to the dataset_tweets list
+        if not class_df.empty:
+            tweet_message = class_df.sample()['tweet'].values[0]
+            if tweet_message not in used_tweets:
+                dataset_tweets.append((class_name.capitalize(), tweet_message))
+                used_tweets.append(tweet_message)
+
+    # Write the dataset to a text file
+    file_name = f"dataset_{i+1}.txt"
+    with open(file_name, 'w') as file:
+        for class_name, tweet_message in dataset_tweets:
+            file.write(f"{class_name} tweet message: {tweet_message}\n")
+
+    # Print a message to indicate that the dataset has been created
+    print(f"Data Set {i + 1} has been created and saved as {file_name}")
+
+# Print a message to indicate that all data sets have been created
+print("All data sets have been created.")
