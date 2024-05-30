@@ -1,1 +1,52 @@
+# For colab do not forget the enable secret api key and upload the correct JSONL encoded UTF-8 file.
+
+!pip install google-generativeai
+# Import the Python SDK
+import google.generativeai as genai
+import json
+
+# Used to securely store your API key
+from google.colab import userdata
+
+# Get the Google API key securely from Colab's user data
+api_key = userdata.get('api_key')
+genai.configure(api_key=api_key)
+
+# Load your dataset
+def load_dataset(file_path):
+    with open(file_path, 'r', encoding='utf-8') as file:
+        return [json.loads(line) for line in file]
+
+# Define the model
+model = genai.GenerativeModel('gemini-1.0-pro-001')
+
+# One-shot prompt example
+prompt = """Verilen cümleleri doğal afet türlerine göre aşağıdaki adımları uygulayarak sınıflandır ve sadece sonuçlarını yazdır. 
+-Cümle deprem doğal afetiyle ilgiliyse veya "yardım", "konum", "kimlik", "iletişim" gibi aciliyet içeren bilgiler içeriyorsa "Deprem" yaz.
+-Cümle sel doğal afetiyle ilgiliyse "Sel" yaz.
+-Cümle yangın doğal afetiyle ilgiliyse "Yangın" yaz.
+-Gerçekten doğal afetle ilgili olmayan veya mecazi anlamda doğal afetlerle ilişkilendirilebilecek cümleleri 'Alakasız' olarak sınıflandır.
+
+Örnek cümleler ve sonuçlar aşağıda verilmiştir. Bunların içeriğini dikkate al. 
+
+###ÖRNEKLERİN BAŞLANGICI
+Cümle:ANTAKYA DEFNE HATAY ENKAZDAN SES GELDİ BİR BİNA DOLUSU İNSAN LÜTFEN YARDIM EDİN Hatay Sümerler mahallesi harbiye caddesi belediye evleri A3 blok Defne/Hatay AFAD LAZIM LÜTFEN YARDIM EDİN!!!! 
+Sonuç:Deprem
+Cümle: İzmir kent merkezinde etkili olan sağanak yağış nedeniyle bazı sokak ve caddelerde su baskınları yaşandı. Vatandaşlar tahtadan set yaparak yürüyebildi. #izmir #sel #subaskını
+Sonuç:Sel
+Cümle: Antalya'nın Alanya ilçesinde bugün öğle saatlerinde çıkan orman yangını sebebiyle oluşmuştur. Bölgedeki 5 ev tahliye edildi. Çalışmalar sürüyor.
+Sonuç:Yangın
+Cümle:beni güzel hatırla bunlar son satırlar farz et ki bir rüzgardım esip geçtim hayatından ya da bir yağmur sel aldım sokağında sonra toprak çekti suyu kaybolup gittin belki de bir rüyaydım senin için uyandın ve ben bittim.
+Sonuç:Alakasız
+### ÖRNEKLERİN SONU
+"""
+
+# Load your dataset
+dataset = load_dataset('BBT_final.jsonl')
+
+# Classify each sentence in the dataset
+for data in dataset:
+    user_message = data['messages'][0]['content']
+    response = model.generate(prompt + user_message)
+    print(f"Cümle: {user_message}\nSonuç: {response.generations[0].text.strip()}\n")
 
